@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/volodimyr/event_publisher/api/models"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -59,7 +61,7 @@ func TestRegister(t *testing.T) {
 			r, err := http.NewRequest(c.method, c.path, c.body)
 			w := httptest.NewRecorder()
 			if err != nil {
-				t.Error(err)
+				t.Fatalf("Test work incorrect [%v] \n", err)
 			}
 			register(publisher, w, r)
 			res := w.Result()
@@ -112,7 +114,7 @@ func TestUnregister(t *testing.T) {
 			r, err := http.NewRequest(c.method, c.path, c.body)
 			w := httptest.NewRecorder()
 			if err != nil {
-				t.Error(err)
+				t.Fatalf("Test work incorrect [%v] \n", err)
 			}
 			unregister(publisher, w, r)
 			res := w.Result()
@@ -173,7 +175,7 @@ func TestPublish(t *testing.T) {
 			r, err := http.NewRequest(c.method, c.path, c.body)
 			w := httptest.NewRecorder()
 			if err != nil {
-				t.Error(err)
+				t.Fatalf("Test work incorrect [%v] \n", err)
 			}
 			publish(publisher, w, r)
 			res := w.Result()
@@ -185,6 +187,50 @@ func TestPublish(t *testing.T) {
 	}
 }
 
-func EndToEnd(t *testing.T) {
+func TestEndToEnd(t *testing.T) {
+	tearDown, publisher := setupTearDown(t)
+	defer tearDown(t)
 
+	event := "{'fake':'event'}"
+	//create fake server with body checking
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		bs, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Test work incorrect [%v] \n", err)
+		}
+		actual := string(bs)
+		if actual != event {
+			t.Errorf("Expected published event [%s], but got [%s]\n", event, actual)
+		}
+	}))
+
+	eventName := "publish_event"
+	//register listener
+	r, err := http.NewRequest("POST", "https://domain.com/listener",
+		strings.NewReader(fmt.Sprintf(`{"event":"%s","name":"test_1","address":"%s"}`, eventName, fake.URL)))
+
+	w := httptest.NewRecorder()
+	if err != nil {
+		t.Fatalf("Test work incorrect [%v] \n", err)
+	}
+	register(publisher, w, r)
+	res := w.Result()
+	if res.StatusCode != http.StatusCreated {
+		t.Errorf("It looks like endpoint '/listener' works unexpectedly wrong."+
+			"Expected status code [%d] actual status code [%d] \n", http.StatusCreated, res.StatusCode)
+	}
+
+	//publish event to registered listener
+	r, err = http.NewRequest("POST", "https://domain.com/publish/"+eventName, strings.NewReader(event))
+	w = httptest.NewRecorder()
+	if err != nil {
+		t.Fatalf("Test work incorrect [%v] \n", err)
+	}
+	publish(publisher, w, r)
+	res = w.Result()
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("It looks like endpoint '/publish/:event' works unexpectedly wrong."+
+			"Expected status code [%d] actual status code [%d] \n", http.StatusOK, res.StatusCode)
+	}
 }

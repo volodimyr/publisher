@@ -14,6 +14,6 @@ func DoPOST(URL string, body []byte) {
 		return
 	}
 	if resp.StatusCode != 200 {
-		log.Printf("Sent message, but listener gave respond with status code: [%d]")
+		log.Printf("Sent message, but listener gave respond with status code: [%d]", resp.StatusCode)
 	}
 }
