@@ -2,7 +2,9 @@ GOCMD=go
 GOTEST=$(GOCMD) test
 
 test:
-	${GOTEST} -v ./...
+	${GOTEST} -v -cover ./...
+btest:
+	cd api && ${GOTEST} -v -bench=.
 run:
 	${GOCMD} run api/publisher.go
 docker-build:

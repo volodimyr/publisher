@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/volodimyr/event_publisher/api/models"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -232,5 +234,71 @@ func TestEndToEnd(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Errorf("It looks like endpoint '/publish/:event' works unexpectedly wrong."+
 			"Expected status code [%d] actual status code [%d] \n", http.StatusOK, res.StatusCode)
+	}
+}
+
+func benchSetupTearDown(b *testing.B) (func(b *testing.B), *Publisher) {
+	//log.SetFlags(0)
+	log.SetOutput(ioutil.Discard)
+	b.Log("Setup Publisher for benchmark test")
+	p := &Publisher{
+		Events:    make(map[string]map[string]string, 10),
+		New:       make(chan models.WorkNew, 10),
+		Discard:   make(chan models.WorkDiscard, 10),
+		Broadcast: make(chan models.WorkPublisher, 10),
+		Stop:      make(chan struct{}),
+	}
+	go p.Service()
+
+	return func(b *testing.B) {
+		p.Stop <- struct{}{}
+		b.Log("Tear down benchmark test")
+	}, p
+}
+
+func setupRequest(b *testing.B, method string, path string, body io.Reader) (*http.Request, *httptest.ResponseRecorder) {
+	r, err := http.NewRequest(method, path, body)
+	w := httptest.NewRecorder()
+	if err != nil {
+		b.Fatalf("Benchmark incorrect setup [%v] \n", err)
+	}
+
+	return r, w
+}
+
+func BenchmarkRegister(b *testing.B) {
+	tearDown, publisher := benchSetupTearDown(b)
+	defer tearDown(b)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r, w := setupRequest(b, "POST", "https://domain.com/listener",
+			bytes.NewBuffer([]byte(`{"event":"event_1","name":"test_1","address":"http://localhost:8090/test"}`)))
+		register(publisher, w, r)
+		res := w.Result()
+		if res.StatusCode != http.StatusCreated {
+			b.Errorf("It looks like endpoint '/listener' works unexpectedly wrong."+
+				"Expected status code [%d] actual status code [%d] \n", http.StatusCreated, res.StatusCode)
+		}
+	}
+}
+
+func BenchmarkPublish(b *testing.B) {
+	tearDown, publisher := benchSetupTearDown(b)
+	defer tearDown(b)
+	event := "event_publish"
+	listener := "publish_listener"
+	publisher.Events[event] = map[string]string{listener: "https://localhost:8080"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r, w := setupRequest(b, "POST", "https://domain.com/publish/event_publish",
+			bytes.NewBuffer([]byte(`{"data": "random"}`)))
+		publish(publisher, w, r)
+		res := w.Result()
+		if res.StatusCode != http.StatusOK {
+			b.Errorf("It looks like endpoint '/publish/:name' works unexpectedly wrong."+
+				"Expected status code [%d] actual status code [%d] \n", http.StatusOK, res.StatusCode)
+		}
 	}
 }

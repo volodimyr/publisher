@@ -64,7 +64,7 @@ func (p *Publisher) Service() {
 			if reg, ok := p.Events[wn.Listener.Event]; ok {
 				reg[wn.Listener.Name] = wn.Listener.Address
 				wn.Done <- struct{}{}
-				log.Printf("server: Registered new listener into existing event [%s]\n", p.Events[wn.Listener.Event])
+				log.Printf("server: Registered new listener [%v] into existing event [%s]\n", wn.Listener, p.Events[wn.Listener.Event])
 				continue
 			}
 			//create new event and add new listener
