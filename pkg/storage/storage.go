@@ -23,6 +23,7 @@ type storage struct {
 
 //New establishes new persistent and concurrency safe storage
 //Returns *storage which is a singleton instance
+//logger must be specified by the first call of the function
 func New(logger *log.Logger) *storage {
 	once.Do(func() {
 		instance = &storage{

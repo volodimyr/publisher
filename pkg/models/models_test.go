@@ -14,12 +14,30 @@ func TestListener_IsEmpty(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			test := test
 			if err := test.listener.IsEmpty(); err == nil {
-				t.Logf("[%s] - Test failure. Empty strings func works incorrect.", test.name)
+				t.Logf("[%s] - Test failure. IsEmpty func works incorrect.", test.name)
 				t.Fail()
 			}
 		})
 	}
 }
 
-//TODO: TestMessage_IsEmpty
+func TestPublishMessage_IsEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		pm   PublishMessage
+	}{
+		{name: "Empty", pm: PublishMessage{Event: "", Body: []byte("")}},
+		{name: "Empty event", pm: PublishMessage{Event: "", Body: []byte(`{data": "random"}`)}},
+		{name: "Empty body", pm: PublishMessage{Event: "Default", Body: []byte("")}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.pm.IsEmpty(); err == nil {
+				t.Logf("[%s] - Test failure. IsEmpty func works incorrect.", test.name)
+				t.Fail()
+			}
+		})
+	}
+}
