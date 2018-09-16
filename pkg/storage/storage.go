@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/volodimyr/event_publisher/pkg/client"
-	"github.com/volodimyr/event_publisher/pkg/models"
+	"github.com/volodimyr/publisher/pkg/client"
+	"github.com/volodimyr/publisher/pkg/models"
 	"log"
 	"sync"
 )

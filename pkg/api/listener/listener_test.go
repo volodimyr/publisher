@@ -2,7 +2,7 @@ package listener
 
 import (
 	"fmt"
-	"github.com/volodimyr/event_publisher/pkg/storage"
+	"github.com/volodimyr/publisher/pkg/storage"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"

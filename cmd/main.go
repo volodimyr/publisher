@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/volodimyr/event_publisher/pkg/api/listener"
-	"github.com/volodimyr/event_publisher/pkg/api/publisher"
-	"github.com/volodimyr/event_publisher/pkg/server"
+	"github.com/volodimyr/publisher/pkg/api/listener"
+	"github.com/volodimyr/publisher/pkg/api/publisher"
+	"github.com/volodimyr/publisher/pkg/server"
 	"log"
 	"net/http"
 	"os"

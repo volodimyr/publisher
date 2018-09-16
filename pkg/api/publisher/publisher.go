@@ -1,9 +1,9 @@
 package publisher
 
 import (
-	"github.com/volodimyr/event_publisher/pkg/models"
-	"github.com/volodimyr/event_publisher/pkg/response"
-	"github.com/volodimyr/event_publisher/pkg/storage"
+	"github.com/volodimyr/publisher/pkg/models"
+	"github.com/volodimyr/publisher/pkg/response"
+	"github.com/volodimyr/publisher/pkg/storage"
 	"io/ioutil"
 	"log"
 	"net/http"

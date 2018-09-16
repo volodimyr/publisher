@@ -2,8 +2,8 @@ package publisher
 
 import (
 	"fmt"
-	"github.com/volodimyr/event_publisher/pkg/models"
-	"github.com/volodimyr/event_publisher/pkg/storage"
+	"github.com/volodimyr/publisher/pkg/models"
+	"github.com/volodimyr/publisher/pkg/storage"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
