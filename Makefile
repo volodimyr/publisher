@@ -3,10 +3,8 @@ GOTEST=$(GOCMD) test
 
 test:
 	${GOTEST} -v -cover ./...
-btest:
-	cd api && ${GOTEST} -v -bench=.
 run:
-	${GOCMD} run api/publisher.go
+	${GOCMD} run cmd/main.go
 docker-build:
 	docker image build -t event_publisher:latest .
 docker-run:

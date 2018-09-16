@@ -2,7 +2,7 @@ package models
 
 import "testing"
 
-func TestEmptyStrings(t *testing.T) {
+func TestListener_IsEmpty(t *testing.T) {
 	tests := []struct {
 		name     string
 		listener Listener
@@ -14,9 +14,12 @@ func TestEmptyStrings(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if err := test.listener.EmptyStrings(); err == nil {
-				t.Errorf("[%s] - Test failure. Empty strings func works incorrect.", test.name)
+			if err := test.listener.IsEmpty(); err == nil {
+				t.Logf("[%s] - Test failure. Empty strings func works incorrect.", test.name)
+				t.Fail()
 			}
 		})
 	}
 }
+
+//TODO: TestMessage_IsEmpty
