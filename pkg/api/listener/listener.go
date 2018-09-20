@@ -3,8 +3,8 @@ package listener
 import (
 	"encoding/json"
 	"github.com/volodimyr/publisher/pkg/models"
+	"github.com/volodimyr/publisher/pkg/persistence"
 	"github.com/volodimyr/publisher/pkg/response"
-	"github.com/volodimyr/publisher/pkg/storage"
 	"log"
 	"net/http"
 	"os"
@@ -26,6 +26,7 @@ var (
 //It also holds essential dependencies to be using
 type Handlers struct {
 	logger *log.Logger
+	s      *persistence.Storage
 }
 
 //SetupRoutes setups all initial endpoints for listener handlers
@@ -51,8 +52,7 @@ func (h *Handlers) register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		done := make(chan struct{})
-		s := storage.New(h.logger)
-		s.New <- storage.Add{Listener: l, Done: done}
+		h.s.New <- persistence.Add{Listener: l, Done: done}
 		<-done
 		resp.Created(w, registered)
 		return
@@ -69,8 +69,7 @@ func (h *Handlers) unregister(w http.ResponseWriter, r *http.Request) {
 		lNames := strings.Split(r.URL.Path, "/listener/")
 		if len(lNames) < 2 || lNames[1] != "" {
 			done := make(chan struct{})
-			s := storage.New(h.logger)
-			s.Discard <- storage.Discard{Name: lNames[1], Done: done}
+			h.s.Discard <- persistence.Discard{Name: lNames[1], Done: done}
 			<-done
 			resp.OK(w, unregistered)
 			return
@@ -95,9 +94,9 @@ func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 //NewHandlers create Listener Handlers and establishes all dependencies
 //Important SetupRoutes needs to be called before it can be used
 //if logger == nil, default will be taken
-func NewHandlers(logger *log.Logger) *Handlers {
+func NewHandlers(logger *log.Logger, storage *persistence.Storage) *Handlers {
 	if logger == nil {
 		logger = log.New(os.Stdout, "server: ", log.LstdFlags|log.Lshortfile)
 	}
-	return &Handlers{logger: logger}
+	return &Handlers{logger: logger, s: storage}
 }

@@ -3,10 +3,12 @@ package publisher
 import (
 	"fmt"
 	"github.com/volodimyr/publisher/pkg/models"
-	"github.com/volodimyr/publisher/pkg/storage"
+	"github.com/volodimyr/publisher/pkg/persistence"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -15,6 +17,31 @@ const (
 	event        = "test_event"
 	publishedMsg = `{"data":"default"}`
 )
+
+var (
+	storage *persistence.Storage
+	logger  *log.Logger
+)
+
+func setup() {
+	logger = log.New(os.Stdout, "test: ", log.LstdFlags|log.Lshortfile)
+	if storage == nil {
+		storage = persistence.New(logger)
+	}
+}
+
+func shutdown() {
+	if storage != nil {
+		storage.Stop <- struct{}{}
+	}
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	code := m.Run()
+	shutdown()
+	os.Exit(code)
+}
 
 func TestPublish(t *testing.T) {
 	tests := []struct {
@@ -41,7 +68,7 @@ func TestPublish(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			l := NewHandlers(nil)
+			l := NewHandlers(logger, storage)
 			l.publish(test.out, test.in)
 			if test.out.Code != test.expectedStatus {
 				t.Logf("Expected [%d], but got [%d]", test.expectedStatus, test.out.Code)
@@ -72,23 +99,22 @@ func fakeServer(t *testing.T) *httptest.Server {
 	}))
 }
 
-func setup(t *testing.T) {
+func setupFakeServer(t *testing.T) {
 	fake := fakeServer(t)
-	p := NewHandlers(nil)
-	s := storage.New(p.logger)
 	done := make(chan struct{})
-	s.New <- storage.Add{Done: done, Listener: models.Listener{Event: event, Name: fake.URL, Address: fake.URL}}
+	storage.New <- persistence.Add{Done: done, Listener: models.Listener{Event: event, Name: fake.URL, Address: fake.URL}}
 	<-done
 }
 
 func TestPublishWithFakeServer(t *testing.T) {
-	setup(t)
+	setupFakeServer(t)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("POST", fmt.Sprintf("/publish/%s", event), strings.NewReader(publishedMsg))
-	p := NewHandlers(nil)
+	p := NewHandlers(logger, storage)
 
 	p.publish(w, r)
 
+	//redundant
 	if w.Code != http.StatusOK {
 		t.Logf("Expected status [%d], but got [%d]", http.StatusOK, w.Code)
 		t.Fail()
@@ -96,7 +122,7 @@ func TestPublishWithFakeServer(t *testing.T) {
 }
 
 func TestNewHandlers(t *testing.T) {
-	p := NewHandlers(nil)
+	p := NewHandlers(nil, storage)
 
 	if p.logger == nil {
 		t.Log("Logger cannot be nil")

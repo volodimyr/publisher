@@ -2,10 +2,12 @@ package listener
 
 import (
 	"fmt"
-	"github.com/volodimyr/publisher/pkg/storage"
+	"github.com/volodimyr/publisher/pkg/persistence"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -16,9 +18,34 @@ const (
 	lName = "listener001"
 )
 
+var (
+	storage *persistence.Storage
+	logger  *log.Logger
+)
+
+func setup() {
+	logger = log.New(os.Stdout, "test: ", log.LstdFlags|log.Lshortfile)
+	if storage == nil {
+		storage = persistence.New(logger)
+	}
+}
+
+func shutdown() {
+	if storage != nil {
+		storage.Stop <- struct{}{}
+	}
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	code := m.Run()
+	shutdown()
+	os.Exit(code)
+}
+
 func TestRegister(t *testing.T) {
 	var body = strings.NewReader(fmt.Sprintf(`{"event":"event_001","name":"%s","address":"%s"}`, lName, lAddr))
-	l := NewHandlers(nil)
+	l := NewHandlers(nil, storage)
 	tests := []struct {
 		name           string
 		in             *http.Request
@@ -84,7 +111,7 @@ func setupEvents(t *testing.T) map[string]map[string]string {
 	}
 
 	w := httptest.NewRecorder()
-	l := NewHandlers(nil)
+	l := NewHandlers(logger, storage)
 
 	for k, _ := range events {
 		body := strings.NewReader(fmt.Sprintf(`{"event":"%s","name":"%s","address":"%s"}`, k, lName, lAddr))
@@ -102,13 +129,12 @@ func setupEvents(t *testing.T) map[string]map[string]string {
 func TestRegisterAndCheckStorage(t *testing.T) {
 	setupEvents := setupEvents(t)
 
-	s := storage.New(nil)
 	for k, v := range setupEvents {
-		if _, ok := s.Events[k]; !ok {
+		if _, ok := storage.Events[k]; !ok {
 			t.Logf("Expected key [%s], but actual hasn't got it", k)
 			t.Fail()
 		}
-		if !reflect.DeepEqual(v, s.Events[k]) {
+		if !reflect.DeepEqual(v, storage.Events[k]) {
 			t.Logf("Expected key [%s], but actual hasn't got it", k)
 			t.Fail()
 		}
@@ -119,8 +145,8 @@ func TestUnregisterAndCheckStorage(t *testing.T) {
 	setupEvents(t)
 
 	w := httptest.NewRecorder()
-	l := NewHandlers(nil)
-	s := storage.New(l.logger)
+	l := NewHandlers(logger, storage)
+	s := persistence.New(logger)
 	r := httptest.NewRequest("DELETE", fmt.Sprintf("/listener/%s", lName), nil)
 
 	l.unregister(w, r)
@@ -134,7 +160,7 @@ func TestUnregisterAndCheckStorage(t *testing.T) {
 }
 
 func TestNewHandlers(t *testing.T) {
-	l := NewHandlers(nil)
+	l := NewHandlers(logger, storage)
 
 	if l.logger == nil {
 		t.Log("Logger cannot be nil")
@@ -169,7 +195,7 @@ func TestUnregister(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			l := NewHandlers(nil)
+			l := NewHandlers(logger, storage)
 			l.unregister(test.out, test.in)
 			if test.out.Code != test.expectedStatus {
 				t.Logf("Expected [%d], but got [%d]", test.expectedStatus, test.out.Code)

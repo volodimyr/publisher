@@ -2,8 +2,8 @@ package publisher
 
 import (
 	"github.com/volodimyr/publisher/pkg/models"
+	"github.com/volodimyr/publisher/pkg/persistence"
 	"github.com/volodimyr/publisher/pkg/response"
-	"github.com/volodimyr/publisher/pkg/storage"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -23,6 +23,7 @@ var (
 //It also holds essential dependencies to be using
 type Handlers struct {
 	logger *log.Logger
+	s      *persistence.Storage
 }
 
 //SetupRoutes setups all initial endpoints for listener handlers
@@ -39,8 +40,8 @@ func (h *Handlers) publish(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Event name must be specified", http.StatusBadRequest)
 			return
 		}
-		s := storage.New(h.logger)
-		if _, ok := s.Events[eventNames[1]]; !ok {
+		//s := persistence.New(h.logger)
+		if _, ok := h.s.Events[eventNames[1]]; !ok {
 			h.logger.Println("server: Couldn't publish to non-existing event")
 			http.Error(w, errorNotRegistered, http.StatusNotFound)
 			return
@@ -52,7 +53,7 @@ func (h *Handlers) publish(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		done := make(chan struct{})
-		s.Broadcast <- storage.Publish{Done: done, PublishMessage: models.PublishMessage{Event: eventNames[1], Body: bs}}
+		h.s.Broadcast <- persistence.Publish{Done: done, PublishMessage: models.PublishMessage{Event: eventNames[1], Body: bs}}
 		<-done
 		resp.OK(w, published)
 		return
@@ -73,9 +74,9 @@ func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 //NewHandlers create Publish Handlers and establishes all dependencies
 //Important SetupRoutes needs to be called before it can be used
 //if logger == nil, default will be taken
-func NewHandlers(logger *log.Logger) *Handlers {
+func NewHandlers(logger *log.Logger, storage *persistence.Storage) *Handlers {
 	if logger == nil {
 		logger = log.New(os.Stdout, "server: ", log.LstdFlags|log.Lshortfile)
 	}
-	return &Handlers{logger: logger}
+	return &Handlers{logger: logger, s: storage}
 }

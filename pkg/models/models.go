@@ -17,15 +17,15 @@ type Listener struct {
 }
 
 //IsEmpty checks whether fields are not nil
-func (listn *Listener) IsEmpty() error {
-	if listn.Name == "" {
-		return fmt.Errorf("empty 'Name' field. Validation error [%v]", listn)
+func (l *Listener) IsEmpty() error {
+	if l.Name == "" {
+		return fmt.Errorf("empty 'Name' field. Validation error [%v]", l)
 	}
-	if listn.Event == "" {
-		return fmt.Errorf("empty 'Event' field. Validation error [%v]", listn)
+	if l.Event == "" {
+		return fmt.Errorf("empty 'Event' field. Validation error [%v]", l)
 	}
-	if listn.Address == "" {
-		return fmt.Errorf("empty 'Address' field. Validation error [%v]", listn)
+	if l.Address == "" {
+		return fmt.Errorf("empty 'Address' field. Validation error [%v]", l)
 	}
 	return nil
 }

@@ -1,19 +1,12 @@
-package storage
+package persistence
 
 import (
 	"github.com/volodimyr/publisher/pkg/client"
 	"github.com/volodimyr/publisher/pkg/models"
 	"log"
-	"sync"
 )
 
-var (
-	once sync.Once
-
-	instance *storage
-)
-
-type storage struct {
+type Storage struct {
 	models.Events
 	New       chan Add
 	Discard   chan Discard
@@ -21,21 +14,16 @@ type storage struct {
 	Stop      chan struct{}
 }
 
-//New establishes new persistent and concurrency safe storage
-//Returns *storage which is a singleton instance
-//logger must be specified by the first call of the function
-func New(logger *log.Logger) *storage {
-	once.Do(func() {
-		instance = &storage{
-			Events:    make(map[string]map[string]string, 10),
-			New:       make(chan Add, 10),
-			Discard:   make(chan Discard, 10),
-			Broadcast: make(chan Publish, 10),
-			Stop:      make(chan struct{}),
-		}
-		go instance.service(logger)
-	})
-	return instance
+func New(l *log.Logger) *Storage {
+	s := &Storage{
+		Events:    make(map[string]map[string]string, 10),
+		New:       make(chan Add, 10),
+		Discard:   make(chan Discard, 10),
+		Broadcast: make(chan Publish, 10),
+		Stop:      make(chan struct{}),
+	}
+	go s.service(l)
+	return s
 }
 
 //Publish is a type of work for broadcasting message between whole event: []listeners
@@ -61,7 +49,7 @@ type Discard struct {
 	Done chan struct{}
 }
 
-func (s *storage) service(logger *log.Logger) {
+func (s *Storage) service(logger *log.Logger) {
 	logger.Println("Publisher service is online")
 	for {
 		select {
